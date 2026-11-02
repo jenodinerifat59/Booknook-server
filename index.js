@@ -249,3 +249,88 @@ app.delete("/books/:id", async (req, res) => {
     res.status(500).send({ message: "Failed to delete book" });
   }
 });
+
+// Borrow a book
+app.post("/borrows", async (req, res) => {
+  try {
+    const { bookId, userEmail, borrowDate, returnDate } = req.body;
+
+    if (!bookId || !userEmail || !borrowDate || !returnDate) {
+      return res.status(400).send({
+        message: "All borrow information is required",
+      });
+    }
+
+    if (!ObjectId.isValid(bookId)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    if (
+      !Number.isFinite(new Date(borrowDate).getTime()) ||
+      !Number.isFinite(new Date(returnDate).getTime()) ||
+      new Date(returnDate) <= new Date(borrowDate)
+    ) {
+      return res.status(400).send({
+        message: "Invalid borrow or return date",
+      });
+    }
+
+    const alreadyBorrowed = await borrowsCollection.findOne({
+      bookId: new ObjectId(bookId),
+      userEmail,
+      status: "borrowed",
+    });
+
+    if (alreadyBorrowed) {
+      return res.status(400).send({
+        message: "You have already borrowed this book",
+      });
+    }
+
+    const result = await booksCollection.updateOne(
+      {
+        _id: new ObjectId(bookId),
+        availableCopies: { $gt: 0 },
+      },
+      {
+        $inc: { availableCopies: -1 },
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).send({
+        message: "Book is unavailable",
+      });
+    }
+
+    const borrowData = {
+      bookId: new ObjectId(bookId),
+      userEmail,
+      borrowDate: new Date(borrowDate),
+      returnDate: new Date(returnDate),
+      status: "borrowed",
+      createdAt: new Date(),
+    };
+
+    try {
+      const borrowResult = await borrowsCollection.insertOne(borrowData);
+
+      res.status(201).send({
+        success: true,
+        message: "Book borrowed successfully",
+        insertedId: borrowResult.insertedId,
+      });
+    } catch (error) {
+      await booksCollection.updateOne(
+        { _id: new ObjectId(bookId) },
+        { $inc: { availableCopies: 1 } }
+      );
+
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to borrow book",
+    });
+  }
+});

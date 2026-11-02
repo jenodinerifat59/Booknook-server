@@ -123,3 +123,129 @@ app.get("/books/:id", async (req, res) => {
     res.status(500).send({ message: "Failed to get book" });
   }
 });
+
+// Add new book
+app.post("/books", async (req, res) => {
+  try {
+    const {
+      title,
+      author,
+      category,
+      description,
+      coverImage,
+      totalCopies,
+      addedBy,
+    } = req.body;
+
+    if (!title || !author || !category) {
+      return res.status(400).send({
+        message: "Title, author and category are required",
+      });
+    }
+
+    const copies = Number(totalCopies);
+
+    if (!Number.isInteger(copies) || copies < 1) {
+      return res.status(400).send({
+        message: "Total copies must be at least 1",
+      });
+    }
+
+    const newBook = {
+      title,
+      author,
+      category,
+      description: description || "",
+      coverImage: coverImage || "",
+      totalCopies: copies,
+      availableCopies: copies,
+      addedBy: addedBy || null,
+      createdAt: new Date(),
+    };
+
+    const result = await booksCollection.insertOne(newBook);
+
+    res.status(201).send({
+      success: true,
+      message: "Book added successfully",
+      insertedId: result.insertedId,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to add book" });
+  }
+});
+
+// Update book
+app.patch("/books/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    const allowedFields = [
+      "title",
+      "author",
+      "category",
+      "description",
+      "coverImage",
+    ];
+
+    const updateData = {};
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).send({
+        message: "No valid fields to update",
+      });
+    }
+
+    const result = await booksCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Book not found" });
+    }
+
+    res.send({
+      success: true,
+      message: "Book updated successfully",
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update book" });
+  }
+});
+
+// Delete book
+app.delete("/books/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    const result = await booksCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Book not found" });
+    }
+
+    res.send({
+      success: true,
+      message: "Book deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to delete book" });
+  }
+});

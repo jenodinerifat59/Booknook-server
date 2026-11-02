@@ -71,3 +71,55 @@ app.get("/books", async (req, res) => {
     res.status(500).send({ message: "Failed to get books" });
   }
 });
+
+// Latest 6 books
+app.get("/books/latest", async (req, res) => {
+  try {
+    const books = await booksCollection
+      .find()
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(6)
+      .toArray();
+
+    res.send(books);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to get latest books" });
+  }
+});
+
+// Get books by user
+app.get("/books/user/:email", async (req, res) => {
+  try {
+    const books = await booksCollection
+      .find({ addedBy: req.params.email })
+      .sort({ createdAt: -1, _id: -1 })
+      .toArray();
+
+    res.send(books);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to get user's books" });
+  }
+});
+
+// Get single book
+app.get("/books/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    const book = await booksCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!book) {
+      return res.status(404).send({ message: "Book not found" });
+    }
+
+    res.send(book);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to get book" });
+  }
+});

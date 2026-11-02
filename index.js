@@ -40,3 +40,34 @@ run().catch((err) => {
   console.error("Database connection failed:", err.message);
   process.exit(1);
 });
+
+// Get all books
+app.get("/books", async (req, res) => {
+  try {
+    const { search, category, sort } = req.query;
+
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { author: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    const order = sort === "oldest" ? 1 : -1;
+
+    const books = await booksCollection
+      .find(query)
+      .sort({ createdAt: order, _id: order })
+      .toArray();
+
+    res.send(books);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to get books" });
+  }
+});

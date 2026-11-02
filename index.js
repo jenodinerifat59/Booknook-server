@@ -334,3 +334,45 @@ app.post("/borrows", async (req, res) => {
     });
   }
 });
+
+// Get borrowed books by user email
+app.get("/borrows/user/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const borrows = await borrowsCollection
+      .aggregate([
+        {
+          $match: {
+            userEmail: email,
+          },
+        },
+        {
+          $lookup: {
+            from: "books",
+            localField: "bookId",
+            foreignField: "_id",
+            as: "book",
+          },
+        },
+        {
+          $unwind: {
+            path: "$book",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+      ])
+      .toArray();
+
+    res.send(borrows);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to get user's borrowed books",
+    });
+  }
+});

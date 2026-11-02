@@ -376,3 +376,65 @@ app.get("/borrows/user/:email", async (req, res) => {
     });
   }
 });
+// Return a borrowed book
+app.patch("/borrows/:id/return", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        message: "Invalid borrow ID",
+      });
+    }
+
+    const borrow = await borrowsCollection.findOne({
+      _id: new ObjectId(id),
+      status: "borrowed",
+    });
+
+    if (!borrow) {
+      return res.status(404).send({
+        message: "Borrow record not found or already returned",
+      });
+    }
+
+    const result = await borrowsCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+        status: "borrowed",
+      },
+      {
+        $set: {
+          status: "returned",
+          returnedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).send({
+        message: "Book has already been returned",
+      });
+    }
+
+    await booksCollection.updateOne(
+      {
+        _id: borrow.bookId,
+      },
+      {
+        $inc: {
+          availableCopies: 1,
+        },
+      }
+    );
+
+    res.send({
+      success: true,
+      message: "Book returned successfully",
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to return book",
+    });
+  }
+});

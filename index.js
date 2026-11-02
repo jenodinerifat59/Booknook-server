@@ -18,3 +18,25 @@ const client = new MongoClient(
 app.get("/", (req, res) => {
   res.send("BookNook API is running");
 });
+
+async function run() {
+  await client.connect();
+
+  const db = client.db("booknook");
+
+  const booksCollection = db.collection("books");
+  const borrowsCollection = db.collection("borrows");
+
+  await db.command({ ping: 1 });
+
+  console.log("Connected to MongoDB Atlas");
+
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+run().catch((err) => {
+  console.error("Database connection failed:", err.message);
+  process.exit(1);
+});

@@ -34,7 +34,7 @@ npm start
 ## 🌐 Endpoints & URLs
 
 - **Local:** http://localhost:5000
-- **Live:** https://your-service.onrender.com
+- **Live:** https://booknook-server-5hv3.onrender.com
 
 | Method | Endpoint                | Description                                   |
 | ------ | ----------------------- | --------------------------------------------- |
